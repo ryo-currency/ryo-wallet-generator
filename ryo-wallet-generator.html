@@ -10699,6 +10699,16 @@ html { font-family: sans-serif }
     <div class="row center-align">
         <div class="col s12">
             <form>
+              <select onchange="js:setKurz(this.selectedIndex);" class="waves-effect waves-light btn" style="max-width: 20%">
+                <option>Long Address</option>
+                <option>Kurz Address</option>
+              </select>
+            </form>
+        </div>
+    </div>
+    <div class="row center-align">
+        <div class="col s12">
+            <form>
                 <input class="waves-effect waves-light btn" type="button" onclick="js:genwallet('english');" value="English" action=""/ id=lang_en>
                 <input class="waves-effect waves-light btn" type="button" onclick="js:genwallet('spanish');" value="Spanish" action=""/ id=lang_es>
                 <!-- portuguese word list has a few prefix collisions
@@ -10905,6 +10915,7 @@ function poor_mans_kdf(str)
 }
 current_lang='english';
 keys = null;
+use_kurz = false;
 function genwallet(lang)
 {
   if(keys && !confirm('Are you sure? This wallet cannot be recovered once a new wallet is generated.')) {
@@ -10928,8 +10939,10 @@ function genwallet(lang)
     else {
       seed = cnUtil.sc_reduce32(poor_mans_kdf(user_entropy));
     }
+    // keys = cnUtil.create_address(seed, use_kurz);
     keys = cnUtil.create_address(seed);
   }
+  // mnemonic = mn_encode(seed,current_lang,use_kurz);
   mnemonic = mn_encode(seed,current_lang);
 
   spend_key_widget.innerHTML = keys.spend.sec;
@@ -11125,31 +11138,19 @@ function enableLanguage(code, enable)
   enableElement("lang_" + code, enable)
 }
 
-function setCoin(index)
+function setKurz(index)
 {
-  var enable
-  var language
   prefix_widget = document.getElementById("prefix_widget");
   if (index == 0) {
-    cnUtil = cnUtilGen(moneroConfig);
-    prefix_widget.value = "4";
-    enable = true
-    language = "english"
+    use_kurz = false;
+    prefix_widget.value = "RYoL";
   }
   else if (index == 1) {
-    cnUtil = cnUtilGen(aeonConfig);
-    prefix_widget.value = "W";
-    enable = false
-    language = "electrum"
+    use_kurz = true;
+    prefix_widget.value = "RYoK";
   }
-  enableLanguage("en", enable)
-  enableLanguage("es", enable)
-  enableLanguage("pt", enable)
-  enableLanguage("jp", enable)
-  enableElement("show_qr_code", enable)
-  genwallet(language);
+  genwallet(current_lang);
 }
-
 genwallet();
 </script>
 
