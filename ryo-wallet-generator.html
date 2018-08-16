@@ -1979,7 +1979,8 @@ var ryoConfig = {
     coinSymbol: 'RYO',
     coinName: 'Ryo',
     coinUriPrefix: 'ryo:',
-    addressPrefix: 0x2ce192
+    longAddrPrefix: 0x2ce192,
+    kurzAddrPrefix: 0x2c6192
 };
 
 var cnUtilGen = function(initConfig) {
@@ -1990,7 +1991,7 @@ var cnUtilGen = function(initConfig) {
     var HASH_STATE_BYTES = 200;
     var HASH_SIZE = 32;
     var ADDRESS_CHECKSUM_SIZE = 4;
-    var CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = config.addressPrefix;
+    var CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = config.longAddrPrefix;
     var UINT64_MAX = new JSBigInt(2).pow(64);
     var CURRENT_TX_VERSION = 1;
     var TX_EXTRA_NONCE_MAX_COUNT = 255;
@@ -2119,10 +2120,18 @@ var cnUtilGen = function(initConfig) {
     };
 
     this.pubkeys_to_string = function(spend, view) {
-        var prefix = this.encode_varint(CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX);
-        var data = prefix + spend + view;
-        var checksum = this.cn_fast_hash(data);
-        return cnBase58.encode(data + checksum.slice(0, ADDRESS_CHECKSUM_SIZE * 2));
+        if(spend != view) {
+            var prefix = this.encode_varint(config.longAddrPrefix);
+            var data = prefix + spend + view;
+            var checksum = this.cn_fast_hash(data);
+            return cnBase58.encode(data + checksum.slice(0, ADDRESS_CHECKSUM_SIZE * 2));
+        }
+        else {
+            var prefix = this.encode_varint(config.kurzAddrPrefix);
+            var data = prefix + spend;
+            var checksum = this.cn_fast_hash(data);
+            return cnBase58.encode(data + checksum.slice(0, ADDRESS_CHECKSUM_SIZE * 2));
+        }
     };
 
     // Generate keypair from seed
@@ -2161,17 +2170,20 @@ var cnUtilGen = function(initConfig) {
         return bintohex(output);
     };
 
-    this.create_address = function(seed) {
+    this.create_address = function(seed, use_kurz) {
         var keys = {};
-        var first;
-        if (seed.length !== 64) {
-            first = this.keccak(seed, seed.length / 2, 32);
-        } else {
-            first = seed;
+        if (seed.length !== 32)
+            throw "Invalid seed leength";
+
+        if(use_kurz) {
+            keys.spend = this.generate_keys(this.keccak("00000000" + seed, seed.length / 2 + 4, 32));
+            keys.view = keys.spend;
         }
-        keys.spend = this.generate_keys(first);
-        var second = this.keccak(keys.spend.sec, 32, 32);
-        keys.view = this.generate_keys(second);
+        else {
+            keys.view = this.generate_keys(this.keccak("01000000" + seed, seed.length / 2 + 4, 32));
+            keys.spend = this.generate_keys(this.keccak("02000000" + seed, seed.length / 2 + 4, 32));
+        }
+
         keys.public_addr = this.pubkeys_to_string(keys.spend.pub, keys.view.pub);
         return keys;
     };
@@ -2439,9 +2451,6 @@ function mn_encode(str, wordset_name) {
         var w2 = (Math.floor(x / n) + w1) % n;
         var w3 = (Math.floor(Math.floor(x / n) / n) + w2) % n;
         out = out.concat([wordset.words[w1], wordset.words[w2], wordset.words[w3]]);
-    }
-    if (wordset.prefix_len > 0) {
-        out.push(out[mn_get_checksum_index(out, wordset.prefix_len)]);
     }
     return out.join(' ');
 }
@@ -4525,7 +4534,7 @@ function poor_mans_kdf(str)
   var hex = cnBase58.bintohex(cnBase58.strtobin(str));
   for (var n = 0; n < 10000; ++n)
     hex = keccak_256(cnBase58.hextobin(hex));
-  return hex;
+  return hex.substring(0, 32);
 }
 current_lang='english';
 keys = null;
@@ -4548,13 +4557,13 @@ function genwallet(lang)
   else {
     var user_entropy = user_entropy_widget.value;
     if (user_entropy === "") {
-      seed = cnUtil.sc_reduce32(cnUtil.rand_32());
+      seed = cnUtil.rand_16();
     }
     else {
-      seed = cnUtil.sc_reduce32(poor_mans_kdf(user_entropy));
+      seed = poor_mans_kdf(user_entropy);
     }
-    // keys = cnUtil.create_address(seed, use_kurz);
-    keys = cnUtil.create_address(seed);
+
+    keys = cnUtil.create_address(seed, use_kurz);
   }
   // mnemonic = mn_encode(seed,current_lang,use_kurz);
   mnemonic = mn_encode(seed,current_lang);
