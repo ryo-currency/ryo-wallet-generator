@@ -4565,15 +4565,8 @@ function genwallet(lang)
   address_qr_widget.innerHTML = "";
   mnemonic_widget.innerHTML = mnemonic;
 
-  // only monero has the URI scheme
-  if (prefix_widget.value == "4") {
-    qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
-    qr.makeCode("monero:"+keys.public_addr);
-  }
-  else {
-    qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
-    qr.makeCode(keys.public_addr);
-  }
+  qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
+  qr.makeCode(keys.public_addr);
 }
 
 previous_button_text = "";
@@ -4613,7 +4606,7 @@ function genwallet_prefix_worker()
   mnemonic_widget.innerHTML = mnemonic;
 
   qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
-  qr.makeCode("monero:"+keys.public_addr);
+  qr.makeCode(keys.public_addr);
 }
 
 var zerohex="0000000000000000000000000000000000000000000000000000000000000000";
