@@ -10944,7 +10944,8 @@ function genwallet(lang)
     qr.makeCode("monero:"+keys.public_addr);
   }
   else {
-    qr = null;
+    qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
+    qr.makeCode(keys.public_addr);
   }
 }
 
