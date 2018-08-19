@@ -2119,8 +2119,8 @@ var cnUtilGen = function(initConfig) {
         return out;
     };
 
-    this.pubkeys_to_string = function(spend, view) {
-        if(spend != view) {
+    this.pubkeys_to_string = function(spend, view, use_kurz) {
+        if(!use_kurz) {
             var prefix = this.encode_varint(config.longAddrPrefix);
             var data = prefix + spend + view;
             var checksum = this.cn_fast_hash(data);
@@ -2173,7 +2173,7 @@ var cnUtilGen = function(initConfig) {
     this.create_address = function(seed, use_kurz) {
         var keys = {};
         if (seed.length !== 32)
-            throw "Invalid seed leength";
+            throw "Invalid seed length";
 
         if(use_kurz) {
             keys.spend = this.generate_keys(this.keccak("00000000" + seed, seed.length / 2 + 4, 32));
@@ -2184,25 +2184,28 @@ var cnUtilGen = function(initConfig) {
             keys.spend = this.generate_keys(this.keccak("02000000" + seed, seed.length / 2 + 4, 32));
         }
 
-        keys.public_addr = this.pubkeys_to_string(keys.spend.pub, keys.view.pub);
+        keys.public_addr = this.pubkeys_to_string(keys.spend.pub, keys.view.pub, use_kurz);
         return keys;
     };
 
-    this.create_address_if_prefix = function(seed, prefix) {
+    this.create_address_if_prefix = function(seed, prefix, use_kurz) {
         var keys = {};
-        var first;
-        if (seed.length !== 64) {
-            first = this.keccak(seed, seed.length / 2, 32);
-        } else {
-            first = seed;
+        if (seed.length !== 32)
+            throw "Invalid seed length";
+
+        if(use_kurz) {
+            keys.spend = this.generate_keys(this.keccak("00000000" + seed, seed.length / 2 + 4, 32));
+            keys.view = keys.spend;
         }
-        keys.spend = this.generate_keys(first);
-        public_addr = this.pubkeys_to_string(keys.spend.pub, "");
+        else {
+            keys.view = this.generate_keys(this.keccak("01000000" + seed, seed.length / 2 + 4, 32));
+            keys.spend = this.generate_keys(this.keccak("02000000" + seed, seed.length / 2 + 4, 32));
+        }
+
+        public_addr = this.pubkeys_to_string(keys.spend.pub, "", use_kurz);
         if (public_addr.toUpperCase().slice(0, prefix.length) != prefix.toUpperCase())
           return null;
-        var second = this.keccak(keys.spend.sec, 32, 32);
-        keys.view = this.generate_keys(second);
-        keys.public_addr = this.pubkeys_to_string(keys.spend.pub, keys.view.pub);
+        keys.public_addr = this.pubkeys_to_string(keys.spend.pub, keys.view.pub, use_kurz);
         return keys;
     };
 
@@ -4634,7 +4637,7 @@ function genwallet(lang)
 
   spend_key_widget.innerHTML = keys.spend.sec;
   view_key_widget.innerHTML = keys.view.sec;
-  address_widget.innerHTML = cnUtil.pubkeys_to_string(keys.spend.pub, keys.view.pub);
+  address_widget.innerHTML = cnUtil.pubkeys_to_string(keys.spend.pub, keys.view.pub, use_kurz);
   address_qr_widget.innerHTML = "";
   mnemonic_widget.innerHTML = mnemonic;
 
@@ -4649,8 +4652,8 @@ function genwallet_prefix_worker()
   attempts = 0;
   while (true) {
     attempts++;
-    seed = cnUtil.sc_reduce32(cnUtil.rand_32());
-    keys = cnUtil.create_address_if_prefix(seed,prefix);
+    seed = cnUtil.rand_16();
+    keys = cnUtil.create_address_if_prefix(seed, prefix, use_kurz);
     if (keys != null) {
       gen_prefix_widget = document.getElementById("gen_prefix_widget");
       prefix_widget = document.getElementById("prefix_widget");
@@ -4665,7 +4668,7 @@ function genwallet_prefix_worker()
       return;
     }
   }
-  mnemonic = mn_encode(seed,current_lang);
+  mnemonic = mn_encode(seed, current_lang, use_kurz);
 
   spend_key_widget = document.getElementById("spend_key_widget");
   view_key_widget = document.getElementById("view_key_widget");
@@ -4685,12 +4688,12 @@ function genwallet_prefix_worker()
 var zerohex="0000000000000000000000000000000000000000000000000000000000000000";
 var ffhex="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
-function is_valid_prefix(prefix)
+function is_valid_prefix(prefix, use_kurz)
 {
-  if (prefix.length <= 0 || prefix.length >= 95)
+  if (prefix.length <= 0 || prefix.length >= 99)
     return false;
-  var lowest_address=cnUtil.pubkeys_to_string(zerohex,zerohex);
-  var highest_address=cnUtil.pubkeys_to_string(ffhex,ffhex);
+  var lowest_address=cnUtil.pubkeys_to_string(zerohex, zerohex, use_kurz);
+  var highest_address=cnUtil.pubkeys_to_string(ffhex, ffhex, use_kurz);
   var lowest=lowest_address.substr(0,prefix.length);
   var highest=highest_address.substr(0,prefix.length);
   if (prefix<lowest)
@@ -4707,7 +4710,7 @@ function check_prefix_validity()
   if (gen_prefix_widget.value == "STOP")
     return;
   prefix=prefix_widget.value;
-  if (is_valid_prefix(prefix)) {
+  if (is_valid_prefix(prefix, use_kurz)) {
     gen_prefix_widget.value = "Generate wallet";
     gen_prefix_widget.disabled = false;
   }
@@ -4731,11 +4734,11 @@ function genwallet_prefix()
     prefix_widget = document.getElementById("prefix_widget");
     prefix = prefix_widget.value;
     prefix.trim();
-    if (prefix.length < 2) {
-      alert("Bad prefix should be at least two characters");
+    if (prefix.length < 5) {
+      alert("Bad prefix should be at least five characters");
       return;
     }
-    if (!is_valid_prefix(prefix)) {
+    if (!is_valid_prefix(prefix, use_kurz)) {
       alert("Bad prefix "+prefix+" is not a valid address prefix");
       return;
     }
