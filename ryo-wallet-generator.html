@@ -4574,7 +4574,7 @@ body {
     </p>
 
     <span class="pre">Spend key: <span id="spend_key_widget">Generating...</span></span>
-    <span class="pre">View key: &nbsp;<span id="view_key_widget">Generating...</span></span>
+    <span id="view_key_widget_container" class="pre">View key: &nbsp;<span id="view_key_widget">Generating...</span></span>
 </span>
 </div>
 
@@ -4641,6 +4641,11 @@ function genwallet(lang)
   address_qr_widget.innerHTML = "";
   mnemonic_widget.innerHTML = mnemonic;
 
+  if(use_kurz)
+    document.getElementById('view_key_widget_container').style.display = 'none';
+  else
+    document.getElementById('view_key_widget_container').style.display = 'block';
+
   qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
   qr.makeCode(keys.public_addr);
 }
@@ -4680,6 +4685,11 @@ function genwallet_prefix_worker()
   address_widget.innerHTML = keys.public_addr;
   address_qr_widget.innerHTML = "";
   mnemonic_widget.innerHTML = mnemonic;
+
+  if(use_kurz)
+    document.getElementById('view_key_widget_container').style.display = 'none';
+  else
+    document.getElementById('view_key_widget_container').style.display = 'block';
 
   qr=new QRCode(address_qr_widget, {correctLevel:QRCode.CorrectLevel.L});
   qr.makeCode(keys.public_addr);
